@@ -1,3 +1,5 @@
+import itertools
+#print "Success"
 from itertools import combinations
 from random import shuffle
 
@@ -26,63 +28,105 @@ class Pair:
             return self.el2
         raise ValueError("This pair doesn't have that value")
 
-nJoints = 4 #must be EVEN
+nJoints = 6 #must be EVEN
 runs = 1
 loopDetector = 10
 idxs = 'abcdefghijklm'
 
 
+def getTrack(nodes, seen):
+    for perm in itertools.permutations(nodes):
+        p = tuple(sorted(
+            [tuple(sorted(perm[i:i + 2])) for i in range(0, len(perm), 2)]))
+        #if p not in seen:
+        #    seen.add(p)
+        yield p
 
+def getTrack2(l, seen):
+    # recursion anchor, basic case:
+    # when we have 2 nodes only one pair is possible
+    if len(l) == 2:
+        yield [tuple(l)]
+    else:
+        # Pair the first node with all the others
+        for i in range(1, len(l)):
+            # Current pair
+            pair1 = [(l[0], l[i])]
+            # Combine it with all pairs among the remaining nodes
+            remaining = l[1:i] + l[i+1:]
+            for otherPairs in getTrack2(remaining, 1):
+                yield pair1 + otherPairs
 
+def getTransition(track, pos):
+    for pair in track:
+        if pos in pair:
+            if pos != pair[0]:
+                return pair[0]
+            else:
+                return pair[1]
 
-while True:
-    pos = idxs[0]+'1'
-    tj = {}
     
-    nodes = [] #all nodes
+seenTracks = set()
+itrack = 0
 
-    ##create joints transition table
-    for jt in range(nJoints):
-        tj[idxs[jt]+'1'] = idxs[jt]+'3'
-        tj[idxs[jt]+'2'] = idxs[jt]+'3'
-        tj[idxs[jt]+'3'] = idxs[jt]+'1'
-        nodes.extend((idxs[jt]+'1', idxs[jt]+'2', idxs[jt]+'3'))
+tj = {}
+    
+nodes = [] #all nodes
 
-    shuffle(nodes)
+##create joints transition table
+for jt in range(nJoints):
+    tj[idxs[jt]+'1'] = idxs[jt]+'3'
+    tj[idxs[jt]+'2'] = idxs[jt]+'3'
+    tj[idxs[jt]+'3'] = idxs[jt]+'1'
+    nodes.extend((idxs[jt]+'1', idxs[jt]+'2', idxs[jt]+'3'))
+
+nIter = 0
+for track in getTrack2(nodes, seenTracks):
+    pos = idxs[0]+'1'
+
+    print 'Iter: ', nIter, " ",
+    nIter += 1
 
     nodeCount = {}
     for n in nodes:
         nodeCount[n] = 0
 
     ## create rail transition table (connect tracks)
-    rj = {}
-    while nodes:
-        rj[nodes.pop()] = nodes.pop()
+    #####rj = {}
+    #####while nodes:
+    #####    rj[nodes.pop()] = nodes.pop()
 
+    
+    ##print track
+    
     ##test case
     ##rj = {}; rj['a1'] = 'a3'; rj['a2'] = 'b2'; rj['b1'] = 'b3'
 
     #add reverse:
-    for key in rj.keys():
-        rj[rj[key]] = key
+    ######for key in rj.keys():
+    ######    rj[rj[key]] = key
 
     #print "pos\trail trans\tjoint trans\ta3\tb3"
     #print "-------------------------------------------------------\n"
-    #print "Testing config: ", rj, "\n"
+    #print "Testing config: ", track, "\n"
 
 
             
 
     railTr = None
     jointTr = pos
-    seen = set()
+    ##seen = set()
     run = 1
+
+    #itrack += 1
+    #if not itrack%20:
+    #    print 'Iteration: ', itrack
 
 
     while True:
         pos = jointTr
         nodeCount[pos] += 1
-        railTr = rj[pos]
+        railTr = getTransition(track, pos)
         nodeCount[railTr] += 1
         jointTr = tj[railTr]
         if railTr[1] in ['1','2']: ##turn switch
@@ -93,28 +137,29 @@ while True:
                 ##loopDetector -= 1
                 ##if not loopDetector:
                 pass
-        if max(nodeCount.values()) > 50 and min(nodeCount.values()) < 3:
-            #print '\nNodes: ', nodeCount, "\n"
-            #print "Loop detected, abort"
+        if max(nodeCount.values()) > 20 and min(nodeCount.values()) < 3:
+            ##print '\nNodes: ', nodeCount, "\n"
+            print "Loop"
             break
                 
         sol = "{}\t{}\t{}\t{}\t{}".format(pos, railTr, jointTr, tj['a3'], tj['b3'])
         #if sol in seen:
-        if max(nodeCount.values()) > 70:
+        if max(nodeCount.values()) > 30:
             print 'Nodes: ', nodeCount
             if run < runs:
                 print "Iteration complete!"
                 run += 1
-                seen = set()
+                #seen = set()
             else:
                 print "-------------------------------------------------------\n"
                 print "Simulation complete!"
                 print '\nNodes: ', nodeCount, "\n"
-                print "Solution: ", rj
+                print "Solution: ", track
                 halt
-        else:
+                
+        #else:
             #print sol
-            seen.add(sol)
+            #seen.add(sol)
                 
 
         
